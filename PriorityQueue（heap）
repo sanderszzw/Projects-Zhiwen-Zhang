@@ -1,0 +1,156 @@
+/*
+ * File: HeapPriorityQueue.cpp
+ * --------------
+ * Name: Zhiwen Zhang
+ * Course: CS 106B 
+ * Description: This file implements the HeapPriorityQueue class.
+ * HeapPriorityQueue is fast in terms of enqueue, dequeue, peek and changePriority.
+ */
+
+#include "HeapPriorityQueue.h"
+
+HeapPriorityQueue::HeapPriorityQueue() {
+    //constructor
+    myElements = new PQEntry[10]();
+    myCapacity = 10;
+    mySize = 0;
+}
+
+HeapPriorityQueue::~HeapPriorityQueue() {
+    //destructor: delete the array
+    delete myElements;
+}
+void HeapPriorityQueue::changePriorityHelper(int index) {
+    //base case
+    int parent = index/2;
+    if (myElements[parent] <= myElements[index]) {
+        return;
+    }
+    //recursive case
+    swap(myElements[index], myElements[parent]);
+    HeapPriorityQueue::enqueueHelper(parent);
+}
+
+void HeapPriorityQueue::changePriority(string value, int newPriority) {
+    for (int i = 1; i <= mySize; i++) {
+        if (value == myElements[i].value) {
+            if (myElements[i].priority < newPriority) {
+                throw "\"Error: new priority cannot be greater than old priority\"";
+            } else {
+                myElements[i].priority = newPriority;
+                int index = i;
+                HeapPriorityQueue::changePriorityHelper(index);
+                return;
+            }
+        }
+    }
+    throw "\"Error: The given value is not found in this priority queue\"";
+}
+
+void HeapPriorityQueue::clear() {
+    for (int i = 1; i <= mySize; i++) {
+        myElements[i].priority = 0;
+        myElements[i].value = "" ;
+    }
+    mySize = 0;
+}
+
+void HeapPriorityQueue::dequeueHelper(int index) {
+    int child1 = index*2;
+    int child2 = index*2 + 1;
+    //base case: 1.no children; 2.only has one larger child; 3 has two larger children
+    if (child1 > mySize || (child1 == mySize && myElements[child1] >= myElements[index])
+                        || (child2 <= mySize && myElements[child1] >= myElements[index]
+                                             && myElements[child2] >= myElements[index])) {
+        return;
+    }
+
+    //recursive case
+    if (child1 == mySize) {
+        //only one child exists, swap and need not to go into the recursion
+        swap(myElements[child1], myElements[index]);
+        return;
+    }
+    //swap with the most urgent child
+    if (myElements[child1] <= myElements[child2]) {
+        swap(myElements[child1], myElements[index]);
+        HeapPriorityQueue::dequeueHelper(child1);
+    } else {
+        swap(myElements[child2], myElements[index]);
+        HeapPriorityQueue::dequeueHelper(child2);
+    }
+}
+
+string HeapPriorityQueue::dequeue() {
+    if (mySize == 0) {
+        throw "Empty queue!";
+    }
+    string first = myElements[1].value;
+    swap(myElements[1], myElements[mySize]);
+    myElements[mySize].priority = 0;
+    myElements[mySize].value = "";
+    mySize--;
+    HeapPriorityQueue::dequeueHelper(1);
+    return first;
+}
+
+void HeapPriorityQueue::enqueueHelper(int index) {
+    int parent = index/2;
+    //base case
+    if (myElements[parent] <= myElements[index]) {
+        return;
+    }
+    //recursive case
+    swap(myElements[index], myElements[parent]);
+    HeapPriorityQueue::enqueueHelper(parent);
+
+}
+
+void HeapPriorityQueue::enqueue(string value, int priority) {
+    checkResize();
+    myElements[mySize+1].value = value;
+    myElements[mySize+1].priority = priority;
+    mySize++;
+    HeapPriorityQueue::enqueueHelper(mySize);
+}
+
+bool HeapPriorityQueue::isEmpty() const {
+    return mySize == 0;
+}
+
+string HeapPriorityQueue::peek() const {
+    return myElements[1].value;
+}
+
+int HeapPriorityQueue::peekPriority() const {
+    return myElements[1].priority;
+}
+
+int HeapPriorityQueue::size() const {
+    return mySize;
+}
+
+void HeapPriorityQueue::checkResize() {
+    if (mySize >= myCapacity) {
+        PQEntry* bigger = new PQEntry[myCapacity * 2];
+        // copy the elements from myElements into bigger array
+        for (int i = 1; i < mySize; i++) {
+            bigger[i] = myElements[i];
+        }
+        myElements = bigger;
+        myCapacity = myCapacity*2;
+    }
+}
+
+ostream& operator<<(ostream& out, const HeapPriorityQueue& queue) {
+    out << "{";
+    if (!queue.isEmpty()) {
+        cout << queue.myElements[1];
+        for (int i = 2; i <= queue.size(); i++) {
+            out << ", ";
+            cout << queue.myElements[i];
+        }
+    }
+    out << "}";
+    return out;
+}

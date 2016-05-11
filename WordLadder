@@ -1,0 +1,227 @@
+/* wordladder-extra.cpp WITH extra features
+ * Extra features include:
+ *  (1) Word ladder between words of different length: See the function findWordLadder
+ *  (2) End-points outside the dictionary: See the functions addInvalidWordToDictionary, removeInvalidWordFromDictionary, and enterTwoWords (modified input validation)
+ * Name:Zhiwen Zhang
+ * Course: CS 106B
+ * Description: This program finds the shortest ladder between the two words
+ * by changing one letter at a time. If a ladder is found, the ladder will consist of
+ * valid words included in the dictionary specified by the user.
+ */
+
+#include <cctype>
+#include <cmath>
+#include <fstream>
+#include <iostream>
+#include <string>
+#include "console.h"
+#include "filelib.h"
+#include "hashset.h"
+#include "queue.h"
+#include "simpio.h"
+#include "stack.h"
+#include "strlib.h"
+
+using namespace std;
+
+// FUNCTION PROTOTYPES =====================================================
+void displayIntro();
+void loadDictionary(HashSet<string>& dictionary);
+bool addInvalidWordToDictionary(HashSet<string>& dictionary, string word);
+void removeInvalidWordFromDictionary(HashSet<string>& dictionary, string word, bool wordNotInDictionary);
+bool enterTwoWords(HashSet<string>& dictionary, string& word1, string& word2, bool& word1NotInDictionary, bool& word2NotInDictionary);
+bool findWordLadder(HashSet<string>& dictionary, HashSet<string>& usedWords, string word1, string word2);
+bool buildPartialLadder(string neighbor, string word1, string word2, HashSet<string>& dictionary, HashSet<string>& usedWords, Stack<string>& currentStack, Queue<Stack<string> >& wordQueue);
+
+// MAIN PROGRAM ============================================================
+int main() {
+    //Initialize reference variables
+    HashSet<string> dictionary;
+    HashSet<string> usedWords;
+    string word1, word2;
+    bool word1NotInDictionary = true;
+    bool word2NotInDictionary = true;
+
+    displayIntro();
+    loadDictionary(dictionary); // Ask the user to choose the dictionary
+    while (enterTwoWords(dictionary, word1, word2, word1NotInDictionary, word2NotInDictionary)) {
+        findWordLadder(dictionary, usedWords, word1, word2);
+
+        // Re-initialize for next iteration
+        usedWords.clear();
+        removeInvalidWordFromDictionary(dictionary, word1, word1NotInDictionary);
+        removeInvalidWordFromDictionary(dictionary, word2, word2NotInDictionary);
+    }
+    cout << "Have a nice day." << endl;
+    return 0;
+}
+
+// FUNCTIONS ==============================================================
+/*
+ * Prints a welcome message and a brief explanation about the Word Ladder program.
+ */
+void displayIntro() {
+    cout << "Welcome to CS 106B Word Ladder." << endl
+         << "Please give me two English words, and I will change the" << endl
+         << "first into the second by changing one letter at a time." << endl << endl;
+}
+
+/*
+ * Prompts the user to enter the filename of the dictionary and add the words in file to a hashset.
+ * Accepts dictionary as a reference parameter.
+ */
+void loadDictionary(HashSet<string>& dictionary) {
+    ifstream stream;
+    promptUserForFile(stream, "Dictionary file name? ", "Unable to open that file.  Try again.");
+
+    // Load words in the file to the dictionary
+    string word;
+    while (getline(stream, word)) {
+        dictionary.add(toLowerCase(word)); // add the word to the dictionary in lower case
+    }
+    stream.close();
+}
+
+/*
+ * Adds the word to the dictionary if it is not already included.
+ * Returns true if the word is invalid (and thus was added to the dictionary.
+ * Accepts dictionary as a reference parameter and word as a value.
+ */
+bool addInvalidWordToDictionary(HashSet<string>& dictionary, string word) {
+    if (!dictionary.contains(word)) {
+        dictionary.add(word);
+        return true;
+    }
+    return false;
+}
+
+/*
+ * Removes the end-word that was not originally in the dictionary.
+ * Accepts dictionary as a reference parameter and word and wordNotIndictionary as values.
+ */
+void removeInvalidWordFromDictionary(HashSet<string>& dictionary, string word, bool wordNotInDictionary) {
+    if (wordNotInDictionary) {
+        dictionary.remove(word);
+    }
+}
+
+/*
+ * Prompts the user to enter two different words.
+ * Returns true when both entered words are not blank.
+ * Accepts dictionary, word1, word2, word1NotInDictionary, word2NotInDictionary as reference variables.
+ */
+bool enterTwoWords(HashSet<string>& dictionary, string& word1, string& word2, bool& word1NotInDictionary, bool& word2NotInDictionary) {
+    // Initialize
+    word1 = "";
+    word2 = "";
+
+    while (word1 == word2) {
+        word1 = toLowerCase(getLine("\nWord #1 (or Enter to quit): "));
+        if (word1 == "") {
+            return false;
+        }
+        word2 = toLowerCase(getLine("Word #2 (or Enter to quit): "));
+        if (word2 == "") {
+            return false;
+        }
+
+        // Input Validation
+        if (word1 == word2) {
+            cout << "The two words must be different." << endl;
+        }
+    }
+
+    // Add the entered words to the dictionary if it is outside the dictionary to allow later algorithms to work
+    word1NotInDictionary = addInvalidWordToDictionary(dictionary, word1);
+    word2NotInDictionary = addInvalidWordToDictionary(dictionary, word2);
+
+    return true;
+}
+
+/*
+ * Finds the shortest ladder between the two words.
+ * Returns true when a word ladder is found.
+ * Accepts dictionary, usedWord ad reference parameters and word1 and word2 as values.
+ */
+bool findWordLadder(HashSet<string>& dictionary, HashSet<string>& usedWords, string word1, string word2) {
+    Queue<Stack<string> > wordQueue; // Create an empty queue of stacks
+    Stack<string> currentStack; //Create a stack
+    string currentWord;
+    string neighbor;
+
+    // Initialize
+    currentStack.push(word1); // Add word 1 to stack
+    wordQueue.enqueue(currentStack); // Add Stack to Queue
+    usedWords.add(word1);
+
+    while (!wordQueue.isEmpty()) {
+        currentStack = wordQueue.dequeue();
+        currentWord = currentStack.peek();
+
+        for (int i = 0; i < currentWord.length(); i++) {
+            // Type 1 Neighbor: Remove 1 letter from the current word
+            neighbor = currentWord; //Initialize
+            neighbor.erase(i, 1);
+            if (buildPartialLadder(neighbor, word1, word2, dictionary, usedWords, currentStack, wordQueue)) {
+                return true;
+            }
+
+            for (char letter = 'a'; letter <= 'z'; letter++) {
+                // Type 2 Neighbor: Change 1 letter from the current word
+                neighbor = currentWord; //Initialize
+                neighbor[i] = letter;
+                if (buildPartialLadder(neighbor, word1, word2, dictionary, usedWords, currentStack, wordQueue)) {
+                    return true;
+                }
+
+                //Type 3 Neighbor: Add 1 letter to the current word
+                neighbor = currentWord; //Initialize
+                neighbor.insert(i, 1, letter);
+                if (buildPartialLadder(neighbor, word1, word2, dictionary, usedWords, currentStack, wordQueue)) {
+                    return true;
+                }
+
+                if (i == 0) { /* Add 1 letter at the end of the word  Ex) who -> whom
+                               * (i == 0) condition ensures that this task is performed only once for each charactor a ~ z */
+                    neighbor = currentWord; //Initialize
+                    neighbor.insert(currentWord.length(), 1, letter);
+                    if (buildPartialLadder(neighbor, word1, word2, dictionary, usedWords, currentStack, wordQueue)) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    cout << "No word ladder found from " << word2 << " back to " << word1 << "." << endl;
+    return false;
+}
+
+/*
+ * Builds a partial ladder by adding a valid neighbor of the previous word in Stack.
+ * Returns true when a partial ladder becomes a complete word ladder.
+ * Accepts neighbor, word1, word2 as values, and dictionary, usedWords, currentStack, and wordQueue as reference parameters.
+ */
+bool buildPartialLadder(string neighbor, string word1, string word2, HashSet<string>& dictionary, HashSet<string>& usedWords,
+                        Stack<string>& currentStack, Queue<Stack<string> >& wordQueue) {
+    // Process only if the neighbor is (1) valid (i.e. in the dictionary) and
+    // (2) has not been already used in the any word ladder
+    Stack<string> currentStackCopy;
+    if (dictionary.contains(neighbor) && !usedWords.contains(neighbor)) {
+        if (neighbor == word2) {
+            currentStack.push(neighbor);
+            cout << "A ladder from " << word2 << " back to " << word1 << ":" << endl;
+            while (!currentStack.isEmpty()) {
+                cout << currentStack.pop() << " ";
+            }
+            cout << endl;
+            return true; // No need to further process neighbor after the word ladder is fully built
+        } else {
+            currentStackCopy = currentStack;
+            currentStackCopy.push(neighbor);
+            wordQueue.enqueue(currentStackCopy);
+        }
+        usedWords.add(neighbor); // Add the word that has been used in any ladder
+        return false;
+    }
+    return false;
+}

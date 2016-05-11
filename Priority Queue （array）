@@ -1,0 +1,146 @@
+/*
+ * File: ArrayPriorityQueue.cpp
+ * --------------
+ * Name: Zhiwen Zhang
+ * Course: CS 106B 
+ * Description: This file implements the ArrayPriorityQueue class.
+ */
+#include "ArrayPriorityQueue.h"
+
+ArrayPriorityQueue::ArrayPriorityQueue() {
+    myElements = new PQEntry[10]();
+    myCapacity = 10;
+    mySize = 0;
+}
+
+ArrayPriorityQueue::~ArrayPriorityQueue() {
+    delete[] myElements;
+}
+
+void ArrayPriorityQueue::changePriority(string value, int newPriority) {
+    for (int i = 0; i < mySize; i++) {
+        if (myElements[i].value == value) {
+            if (myElements[i].priority >= newPriority) {
+                myElements[i].priority = newPriority;
+                return;
+            } else {
+                throw "\"Error: new priority cannot be greater than old priority\"";
+            }
+        }
+    }
+    throw "\"Error: The given value is not found in this priority queue\"";
+}
+
+void ArrayPriorityQueue::clear() {
+    for (int i = 0; i < mySize; i++) {
+        myElements[i].priority = 0;
+        myElements[i].value = "";
+    }
+    mySize = 0;
+}
+
+string ArrayPriorityQueue::dequeue() {
+    // Throw a string exception if the queue does not contain any elements
+    if (isEmpty()) {
+        throw "\"Error: priority queue is empty\"";
+    }
+
+    // Return the string element with the most urgent priority from the priority queue
+    int index;
+    PQEntry minPriorityElement;
+    index = findMinimum(minPriorityElement);
+
+    // Shift left to cover up the slot
+    for (int i = index; i < mySize - 1; i++) {
+        myElements[i] = myElements[i + 1];
+    }
+
+    myElements[mySize - 1].priority = 0;
+    myElements[mySize - 1].value = "";
+
+    mySize--;
+
+    return minPriorityElement.value;
+}
+
+void ArrayPriorityQueue::enqueue(string value, int priority) {
+    checkResize();
+    myElements[mySize].value = value;
+    myElements[mySize].priority = priority;
+    mySize++;
+}
+
+bool ArrayPriorityQueue::isEmpty() const {
+    return mySize == 0;
+}
+
+string ArrayPriorityQueue::peek() const {
+    // Throw a string exception if the queue does not contain any elements
+    if (isEmpty()) {
+        throw "\"Error: priority queue is empty\"";
+    }
+
+    // Return the string element with the most urgent priority from the priority queue
+    PQEntry minPriorityElement;
+    findMinimum(minPriorityElement);
+
+    return minPriorityElement.value;
+}
+
+int ArrayPriorityQueue::peekPriority() const {
+    // throw a string exception if the queue does not contain any elements
+    if (isEmpty()) {
+        throw "\"Error: priority queue is empty\"";
+    }
+
+    // Return the string element with the most urgent priority from the priority queue
+    PQEntry minPriorityElement;
+    findMinimum(minPriorityElement);
+
+    return minPriorityElement.priority;
+}
+
+int ArrayPriorityQueue::size() const {
+    return mySize;
+}
+
+void ArrayPriorityQueue::checkResize() {
+    if (mySize == myCapacity) {
+        PQEntry* bigger = new PQEntry[2 * myCapacity]();
+
+        for (int i = 0; i < myCapacity; i++) {
+            bigger[i] = myElements[i];
+        }
+
+        delete[] myElements;
+        myElements = bigger;
+        myCapacity *= 2;
+    }
+}
+
+int ArrayPriorityQueue::findMinimum(PQEntry& minPriorityElement) const {
+    int index = 0;
+    minPriorityElement = myElements[0];
+
+    if (mySize > 1) {
+        for (int i = 1; i < mySize; i++) {
+            if(myElements[i] < minPriorityElement) {
+                minPriorityElement = myElements[i];
+                index = i;
+            }
+        }
+    }
+    return index;
+}
+
+ostream& operator<<(ostream& out, const ArrayPriorityQueue& queue) {
+    out << "{";
+    if (!queue.isEmpty()) {
+        for (int i = 0; i < queue.mySize - 1; i++) {
+            out << queue.myElements[i] << ", ";
+        }
+        out << queue.myElements[queue.mySize - 1];
+    }
+    out << "}";
+    return out;
+}

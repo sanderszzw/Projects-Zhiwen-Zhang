@@ -1,0 +1,155 @@
+/*
+ * File: LinkedPriorityQueue.cpp
+ * --------------
+ * Name: Zhiwen Zhang
+ * Course: CS 106B 
+ * Description: This file implements the LinkedPriorityQueue class.
+ */
+
+#include "LinkedPriorityQueue.h"
+
+LinkedPriorityQueue::LinkedPriorityQueue() {
+    front = NULL;
+}
+
+LinkedPriorityQueue::~LinkedPriorityQueue() {
+    clear();
+}
+
+void LinkedPriorityQueue::changePriority(string value, int newPriority) {
+    //If changing front
+    if (front->value == value) {
+        if (front->next == NULL) { //if there is only front in the queue
+            delete front;
+            front = NULL;
+        } else {
+            ListNode* temp = front;
+            front = front->next;
+            delete temp;
+        }
+        LinkedPriorityQueue::enqueue(value, newPriority);
+        return;
+    }
+    //If not changing front
+    ListNode* current = front;
+    while (current->next != NULL) {
+        if (current->next->value == value) {
+            if (current->next->priority < newPriority) {
+                throw "\"Error: new priority cannot be greater than old priority\"";
+            } else if (current->next->next == NULL){
+                //if the node need to be deleted is at the end
+                delete current->next;
+                current->next = NULL;
+            } else {
+                //if the node need to be delete is in the middle
+                ListNode* temp = current->next;
+                current->next = current->next->next;
+                delete temp;
+            }
+            LinkedPriorityQueue::enqueue(value, newPriority);
+            return;
+        }
+        current = current->next;
+    }
+    throw "\"Error: The given value is not found in this priority queue\"";
+}
+
+void LinkedPriorityQueue::clear() {
+    ListNode* current = front;
+    ListNode* temp;
+
+    while (current != NULL) {
+        temp = current;
+        current = current->next;
+        delete temp; // free the memory pointed by the pointer temp
+    }
+    front = NULL;
+}
+
+string LinkedPriorityQueue::dequeue() {
+    if (front == NULL) {
+        throw "\"Error: Priority queue is empty\"";
+    }
+    string value = front->value;
+    ListNode* temp = front;
+    front = front->next;
+    delete temp;
+    return value;
+}
+
+void LinkedPriorityQueue::enqueue(string value, int priority) {
+
+    ListNode* newElement = new ListNode(value, priority);
+
+    if (size() == 0) {
+        // Empty queue (Insert the first node)
+        front = newElement;
+        newElement->next = NULL;
+    } else {
+        // Non-empty queue (Need to find a proper place) i
+        if (*newElement < *front) {
+            //(1) Need to insert at the front of the queue
+            ListNode* temp = front;
+            front = newElement;
+            newElement->next = temp;
+        } else {
+            // Continue looking for the insersion spot
+            ListNode* current = front;
+            while (current->next != NULL) {
+                if (*newElement < *(current->next)) {
+                    // (2) Need to insert in the middle of the queue
+                    newElement->next = current->next;
+                    current->next = newElement;
+                    return;
+                }
+                current = current->next;
+            }
+            // (3) Need to insert at the end of the queue
+            current->next = newElement;
+            newElement->next = NULL;
+        }
+    }
+}
+
+bool LinkedPriorityQueue::isEmpty() const {
+    return front == NULL;
+}
+
+string LinkedPriorityQueue::peek() const {
+    if (front == NULL) {
+        throw "\"Error: Priority queue is empty\"";
+    }
+    return front->value;
+}
+
+int LinkedPriorityQueue::peekPriority() const {
+    if (front == NULL) {
+        throw "\"Error: Priority queue is empty\"";
+    }
+    return front->priority;
+}
+
+int LinkedPriorityQueue::size() const {
+    int size = 0;
+    ListNode* current = front;
+    while (current != NULL) { // Check if this needs to be current instead of current->next
+        size++;
+        current = current->next;
+    }
+    return size;
+}
+
+ostream& operator<<(ostream& out, const LinkedPriorityQueue& queue) {
+    ListNode* current = queue.front;
+    out << "{";
+    if (current != NULL) {
+        out << "\"" << current->value << "\":" << current->priority;;
+        while(current->next != NULL) {
+            out << ", ";
+            current = current->next;
+            out << "\"" << current->value << "\":" << current->priority;
+        }
+    }
+    out << "}";
+    return out;
+}

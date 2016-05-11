@@ -1,0 +1,178 @@
+/* ngrams.cpp WITHOUT any extra features
+ * Name: Zhiwen Zhang
+ * Course: CS 106B 
+ * Description: This program generates a new random text based on the
+ *              data structure created by "N-Grams" algorithm.
+ * Citation: http://mathbits.com/MathBits/CompSci/Files/End.htm
+ */
+
+#include <cctype>
+#include <cmath>
+#include <fstream>
+#include <iostream>
+#include <string>
+#include "console.h"
+#include "filelib.h"
+#include "stack.h"
+#include "queue.h"
+#include "strlib.h"
+#include "simpio.h"
+#include "hashmap.h"
+#include "random.h"
+
+using namespace std;
+
+// FUNCTION PROTOTYPES =====================================================
+void displayIntro();
+int promptUserForN();
+int promptUserForRandomTextLength(int& n);
+bool buildMaps(HashMap<Vector<string>, Vector<string> >& map, int& n);
+bool generateRandomText(HashMap<Vector<string>, Vector<string> >& map, int& n);
+
+// MAIN PROGRAM ============================================================
+int main() {
+    HashMap<Vector<string>, Vector<string> > map;
+    bool run = true;
+    int n;
+
+    displayIntro();
+    run = buildMaps(map, n);
+    while (run) {
+        run = generateRandomText(map, n);
+    }
+    cout << "Exiting." << endl;
+    return 0;
+}
+
+// FUNCTIONS ==============================================================
+/*
+ * Prints a welcome message and a brief explanation about the program.
+ */
+void displayIntro() {
+    cout << "Welcome to CS 106B Random Writer ('N-Grams')." << endl
+         << "This program makes random text based on a document." << endl
+         << "Give me an input file and an 'N' value for groups" << endl
+         << "of words, and I'll create random text for you." << endl << endl;
+}
+
+/*
+ * Prompts the user for a valid value of N for N-gram (size of the chain of words)
+ * Returns N as an integer
+ */
+int promptUserForN() {
+    int n = getInteger("Value of N? ");
+    if (n < 2) {
+        cout << "N must be 2 or greater." << endl;
+        return promptUserForN();
+    }
+    return n;
+}
+
+/*
+ * Prompts the user for a valid number of random words to generate
+ * Returns the number of random words that need to be generated as an integer
+ * Accepts n as a reference parameter
+ */
+int promptUserForRandomTextLength(int& n) {
+    int numRandWords = getInteger("# of random words to generate (0 to quit)? ");
+
+    if (numRandWords == 0) {
+        return 0;
+    } else if (numRandWords >= n) {
+        return numRandWords;
+    } else {
+        cout << "Must be at least " << n << " words." << endl << endl;
+        return promptUserForRandomTextLength(n);
+    }
+}
+
+/*
+ * Prompts the user for the input file builds a map of N-grams from that file.
+ * Returns true if N is not larger than the number of words in the file, and thus a map can be built.
+ * Accepts map and n as reference parameters.
+ */
+bool buildMaps(HashMap<Vector<string>, Vector<string> >& map, int& n) {
+    ifstream stream;
+    string word, nextWord;
+    Vector<string> window, firstWindow;
+
+    // Gather information to build word maps
+    promptUserForFile(stream, "Input file name? ", "Unable to open that file.  Try again.");
+    n = promptUserForN(); // Asks the user to choose a valid value of N for N-grams
+
+    // Load the initial window window that contains (n-1) words
+    for (int i = 0; i < (n - 1); i++) {
+        stream >> word;
+        window.add(word);
+    }
+    firstWindow = window; //Record the vector of first (n-1) words to wrap around
+
+    // Stops processing if the user-provided value of N is larger than the number of words in file
+    if (stream.eof()) {
+        cout << "N is larger than the number of words in the file." << endl
+             << "Unable to compute N-grams." << endl;
+        stream.close();
+        return false;
+    }
+
+    // Maps the window and suffix for all the words in file
+    while (stream >> nextWord) {
+        map[window] += nextWord;
+        window.remove(0); // Update window
+        window.add(nextWord);
+    }
+
+    // Wrap around
+    for (int i = 0; i < firstWindow.size(); i++) {
+        map[window] += firstWindow[i];
+        window.remove(0);
+        window.add(firstWindow[i]);
+    }
+    cout << endl;
+    stream.close();
+    return true;
+}
+
+/*
+ * Generates random text based on the weighted probability of words mapped to the window.
+ * Returns true when random text is generated.
+ * Accepts map and n as reference parameters.
+ */
+bool generateRandomText(HashMap<Vector<string>, Vector<string> >& map, int& n) {
+    Vector<Vector<string> > prefixList = map.keys();
+    Vector<string> prefix, suffixList;
+    string nextWord;
+    int numRandWords;
+
+    // Asks the user the number of random words to generate
+    numRandWords = promptUserForRandomTextLength(n);
+    if (numRandWords == 0) {
+        return false; // Quit if 0 is entered
+    }
+
+    // Choose a random staring point
+    int i = randomInteger(0, prefixList.size() - 1);
+    prefix = prefixList[i];
+
+    // Print out the sequence of random words
+    cout << "... ";
+    for (int i = 0; i < prefix.size(); i++) {
+        cout << prefix[i] << " ";
+    }
+
+    for (int i = 0; i < numRandWords - (n - 1); i++) {
+        // Map to a particular element in vector suffix that is mapped ot the window ii.
+        suffixList = map[prefix];
+
+        // Choose the next word and display it to console
+        int j = randomInteger(0, suffixList.size() - 1);
+        nextWord = suffixList[j];
+        cout << nextWord << " ";
+
+        // Shift to the next window
+        prefix.remove(0);
+        prefix.add(nextWord);
+    }
+    cout << "..." << endl << endl;
+    return true;
+}
